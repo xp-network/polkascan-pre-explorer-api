@@ -25,7 +25,7 @@ import falcon
 import pytz
 from dogpile.cache.api import NO_VALUE
 from scalecodec.type_registry import load_type_registry_preset
-from sqlalchemy import func, tuple_, or_, cast
+from sqlalchemy import func, tuple_, or_, cast, select, Date
 from sqlalchemy.orm import defer, subqueryload, lazyload, lazyload_all
 
 from app import settings
@@ -40,15 +40,15 @@ from substrateinterface import SubstrateInterface
 from datetime import date, timedelta
 
 
-class BlockHistoryResource(JSONAPIDetailResource):
+class BlockHistoryResource(JSONAPIListResource):
     def get_query(self):
-        return BlockTotal.query(self.session).select(
+        return self.session.query(
             func.max(BlockTotal.total_extrinsics),
-            cast(BlockTotal.parent_datetime, sqlalchemy.Date)
+            cast(BlockTotal.parent_datetime, Date)
         ).filter(
             BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
         ).group_by(
-            cast(BlockTotal.parent_datetime, sqlalchemy.Date)
+            cast(BlockTotal.parent_datetime, Date)
         )
 
 
