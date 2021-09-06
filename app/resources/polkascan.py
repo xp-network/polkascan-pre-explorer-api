@@ -40,7 +40,42 @@ from substrateinterface import SubstrateInterface
 from datetime import date, timedelta
 
 
-class BlockHistoryResource(JSONAPIListResource):
+class TotalBlockTimeHistoryResource(JSONAPIListResource):
+    def get_query(self):
+        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
+
+        return self.session.query(
+            timestamp,
+            func.max(BlockTotal.total_blocktime),
+            func.count(BlockTotal.total_blocktime)
+        ).filter(
+            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
+        ).group_by(
+            timestamp
+        )
+
+    def serialize_item(self, item):
+        return [int(x) for x in item]
+
+
+class TotalNewAccHistoryResource(JSONAPIListResource):
+    def get_query(self):
+        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
+
+        return self.session.query(
+            timestamp,
+            func.max(BlockTotal.total_accounts_new),
+        ).filter(
+            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
+        ).group_by(
+            timestamp
+        )
+
+    def serialize_item(self, item):
+        return [int(x) for x in item]
+
+
+class TotalExtrinsicHistoryResource(JSONAPIListResource):
     def get_query(self):
         timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
 
@@ -54,8 +89,7 @@ class BlockHistoryResource(JSONAPIListResource):
         )
 
     def serialize_item(self, item):
-        return [item[0], int(item[1])]
-
+        return [int(x) for x in item]
 
 
 class BlockDetailsResource(JSONAPIDetailResource):
