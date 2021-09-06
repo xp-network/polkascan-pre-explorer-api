@@ -18,10 +18,14 @@
 #
 #  base.py
 from abc import ABC, abstractmethod
+from typing import Any, List, Tuple
+from app.models.data import BlockTotal
+from datetime import date, timedelta
 
 import falcon
 from dogpile.cache import CacheRegion
 from dogpile.cache.api import NO_VALUE
+from sqlalchemy import func, cast, Date
 from sqlalchemy.orm import Session
 
 from app.models.base import BaseModel
@@ -146,6 +150,50 @@ class JSONAPIListResource(JSONAPIResource, ABC):
                 data=[self.serialize_item(item) for item in items],
                 meta=self.get_meta(),
                 included=self.get_included_items(items)
+            ),
+            'cacheable': True
+        }
+
+
+class JSONAPIAnalyticsResource(JSONAPIResource, ABC):
+    cache_expiration_time = DOGPILE_CACHE_SETTINGS['default_list_cache_expiration_time']
+    timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
+
+    @abstractmethod
+    def get_query(self):
+        raise NotImplementedError()
+
+    def apply_filters(self, query, _params):
+        return query.filter(
+            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
+        ).group_by(
+            self.timestamp
+        )
+
+    def serialize_item(self, item: Tuple[Any]) -> List[int]:
+        return [int(x) for x in item]
+
+    def apply_paging(self, query, params):
+        page = int(params.get('page[number]', 1)) - 1
+        page_size = min(int(params.get('page[size]', 25)), MAX_RESOURCE_PAGE_SIZE)
+        return query[page * page_size: page * page_size + page_size]
+
+    def process_get_response(self, req, resp, **kwargs):
+        items = self.get_query()
+        items = self.apply_filters(items, req.params)
+        items = self.apply_paging(items, req.params)
+
+        return {
+            'status': falcon.HTTP_200,
+            'media': self.get_jsonapi_response(
+                data={
+                    'type': 'chart-combined',
+                    'id': 'analytics-chart',
+                    'attributes': {
+                        'data': [self.serialize_item(item) for item in items]
+                    }
+                },
+                meta=self.get_meta(),
             ),
             'cacheable': True
         }

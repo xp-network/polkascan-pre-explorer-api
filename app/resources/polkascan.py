@@ -25,7 +25,7 @@ import falcon
 import pytz
 from dogpile.cache.api import NO_VALUE
 from scalecodec.type_registry import load_type_registry_preset
-from sqlalchemy import func, tuple_, or_, cast, select, Date
+from sqlalchemy import func, tuple_, or_, cast, Date
 from sqlalchemy.orm import defer, subqueryload, lazyload, lazyload_all
 
 from app import settings
@@ -33,63 +33,36 @@ from app.models.data import Block, Extrinsic, Event, RuntimeCall, RuntimeEvent, 
     RuntimeCallParam, RuntimeEventAttribute, RuntimeType, RuntimeStorage, Account, Session, Contract, \
     BlockTotal, SessionValidator, Log, AccountIndex, RuntimeConstant, SessionNominator, \
     RuntimeErrorMessage, SearchIndex, AccountInfoSnapshot
-from app.resources.base import JSONAPIResource, JSONAPIListResource, JSONAPIDetailResource, BaseResource
+from app.resources.base import JSONAPIAnalyticsResource, JSONAPIResource, JSONAPIListResource, JSONAPIDetailResource, BaseResource
 from app.utils.ss58 import ss58_decode, ss58_encode
 from scalecodec.base import RuntimeConfiguration
 from substrateinterface import SubstrateInterface
 from datetime import date, timedelta
 
 
-class TotalBlockTimeHistoryResource(JSONAPIListResource):
+class TotalBlockTimeHistoryResource(JSONAPIAnalyticsResource):
     def get_query(self):
-        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
-
         return self.session.query(
-            timestamp,
+            self.timestamp,
             func.max(BlockTotal.total_blocktime),
             func.count(BlockTotal.total_blocktime)
-        ).filter(
-            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
-        ).group_by(
-            timestamp
         )
 
-    def serialize_item(self, item):
-        return [int(x) for x in item]
 
-
-class TotalNewAccHistoryResource(JSONAPIListResource):
+class TotalNewAccHistoryResource(JSONAPIAnalyticsResource):
     def get_query(self):
-        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
-
         return self.session.query(
-            timestamp,
+            self.timestamp,
             func.max(BlockTotal.total_accounts_new),
-        ).filter(
-            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
-        ).group_by(
-            timestamp
         )
 
-    def serialize_item(self, item):
-        return [int(x) for x in item]
 
-
-class TotalExtrinsicHistoryResource(JSONAPIListResource):
+class TotalExtrinsicHistoryResource(JSONAPIAnalyticsResource):
     def get_query(self):
-        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
-
         return self.session.query(
-            timestamp,
+            self.timestamp,
             func.max(BlockTotal.total_extrinsics)
-        ).filter(
-            BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
-        ).group_by(
-            timestamp
         )
-
-    def serialize_item(self, item):
-        return [int(x) for x in item]
 
 
 class BlockDetailsResource(JSONAPIDetailResource):
