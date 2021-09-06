@@ -42,14 +42,20 @@ from datetime import date, timedelta
 
 class BlockHistoryResource(JSONAPIListResource):
     def get_query(self):
+        timestamp = func.unix_timestamp(cast(BlockTotal.parent_datetime, Date))
+
         return self.session.query(
-            func.max(BlockTotal.total_extrinsics),
-            cast(BlockTotal.parent_datetime, Date)
+            timestamp,
+            func.max(BlockTotal.total_extrinsics)
         ).filter(
             BlockTotal.parent_datetime >= date.today() - timedelta(days=10)
         ).group_by(
-            cast(BlockTotal.parent_datetime, Date)
+            timestamp
         )
+
+    def serialize_item(self, item):
+        return [item[0], int(item[1])]
+
 
 
 class BlockDetailsResource(JSONAPIDetailResource):
