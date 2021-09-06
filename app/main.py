@@ -70,7 +70,7 @@ app.add_route(
     '/analytics/chart/account',
     polkascan.TotalNewAccHistoryResource()
 )
-app.add_route('/block', polkascan.TotalExtrinsicHistoryResource())
+app.add_route('/block', polkascan.BlockListResource())
 app.add_route('/block/{block_id}', polkascan.BlockDetailsResource())
 app.add_route('/block-total', polkascan.BlockTotalListResource())
 app.add_route('/block-total/{item_id}', polkascan.BlockTotalDetailsResource())
